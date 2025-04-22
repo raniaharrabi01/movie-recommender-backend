@@ -1,12 +1,10 @@
 from pymongo import MongoClient
 
-# Connexion à MongoDB local (par défaut)
-client = MongoClient("mongodb://localhost:27017/")
+# Connexion à MongoDB Atlas
+client = MongoClient("mongodb+srv://dbUser:dbUserPassword@cluster0.2bemzsg.mongodb.net/recommender?retryWrites=true&w=majority&appName=Cluster0")
 
-# Création/connexion à la base de données
+# Sélection de la base de données et des collections
 db = client["recommender"]
-
-# Accès aux collections
-users_collection = db["users"]
 items_collection = db["items"]
+users_collection = db["users"]
 ratings_collection = db["ratings"]
