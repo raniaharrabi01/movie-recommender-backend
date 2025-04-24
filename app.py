@@ -5,18 +5,17 @@ from models.rating import create_rating
 from models.user import create_user
 from models.item import create_item
 import bcrypt
+import requests
+import jwt
+import datetime
+import os
+from dotenv import load_dotenv
 
-
-
+# Initialisation de l'app Flask
 app = Flask(__name__)
 
-# Endpoint pour ajouter un utilisateur
-@app.route("/users", methods=["POST"])
-def add_user():
-    data = request.json
-    user = create_user(data["name"], data["email"])
-    result = users_collection.insert_one(user)
-    return jsonify({"message": "Utilisateur ajouté", "id": str(result.inserted_id)})
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Endpoint pour ajouter un film
 @app.route('/items', methods=['POST'])
@@ -92,13 +91,22 @@ def login():
         return jsonify({"message": "Utilisateur non trouvé"}), 404
 
     if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
+        # Création du token JWT
+        payload = {
+            "user_id": str(user["_id"]),
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # expiration dans 2h
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
         return jsonify({
             "message": "Connexion réussie",
+            "token": token,
             "user_id": str(user["_id"]),
             "name": user["name"]
         })
     else:
         return jsonify({"message": "Mot de passe incorrect"}), 401
+
 
 
 
@@ -126,8 +134,42 @@ def recommend(user_id):
 
     # 4. Retourner les titres recommandés
     result = [{"title": film["title"], "genre": film["genre"]} for film in recommendations]
-
     return jsonify({"recommendations": result})
+
+
+ # afficher les films de TMDB
+@app.route("/api/movies")
+def movies():
+    return jsonify(get_movies())
+
+API_KEY = "4ac2226b6ffa53add88f544c5b6e9873"
+TMDB_MOVIES_URL = f"https://api.themoviedb.org/3/movie/popular?api_key={API_KEY}&language=fr-FR&page=1"
+TMDB_GENRE_URL = f"https://api.themoviedb.org/3/genre/movie/list?api_key={API_KEY}&language=fr-FR"
+IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
+
+def get_genre_mapping():
+    response = requests.get(TMDB_GENRE_URL)
+    genres = response.json().get("genres", [])
+    return {genre["id"]: genre["name"] for genre in genres}
+
+def get_movies():
+    response = requests.get(TMDB_MOVIES_URL)
+    data = response.json()
+    genre_map = get_genre_mapping()
+
+    movies = []
+    for movie in data.get("results", []):
+        movie_info = {
+            "title": movie["title"],
+            "image_url": IMAGE_BASE_URL + movie["poster_path"] if movie["poster_path"] else "",
+            "genres": [genre_map.get(gid, "Inconnu") for gid in movie["genre_ids"]],
+            "overview": movie["overview"],
+            "rating": movie["vote_average"],
+            "trailer_url": f"https://www.youtube.com/results?search_query={movie['title'].replace(' ', '+')}+bande+annonce"
+        }
+        movies.append(movie_info)
+    return movies
+
 
 if __name__ == "__main__":
     app.run(debug=True)

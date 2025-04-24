@@ -1,4 +1,4 @@
-def create_user(name, email):
+def create_user(name, email, password):
     return {
         "name": name,
         "email": email,

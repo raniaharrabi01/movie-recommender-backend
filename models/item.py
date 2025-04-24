@@ -1,4 +1,4 @@
-def create_item(title, genre):
+def create_item(title, genre, description, image_url):
     return {
         "title": title,
         "genre": genre,
