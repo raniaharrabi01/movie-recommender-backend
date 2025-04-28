@@ -24,8 +24,9 @@ def add_item():
     item = {
         "title": data["title"],
         "genre": data["genre"],
-        "description": data.get("description", ""),
-        "image_url": data.get("image_url", "")
+        "overview": data.get("overview", ""),
+        "image_url": data.get("image_url", ""),
+        "trailer_url": data.get("trailer_url", "")
     }
     result = items_collection.insert_one(item)
     return jsonify({"message": "Item ajouté", "id": str(result.inserted_id)})
@@ -55,6 +56,20 @@ def get_all_users():
         user["_id"] = str(user["_id"])
     return jsonify(users)
 
+# API pour récupérer les favoris d'un utilisateur avec rating >= 4
+@app.route("/api/favorites/<user_id>")
+def get_favorites(user_id):
+    # Trouver les item_id avec rating >= 4 pour cet utilisateur
+    favorites = ratings_collection.find({
+        "user_id": user_id,
+        "rating": {"$gte": 4}
+    })
+    favorite_item_ids = [fav["item_id"] for fav in favorites]
+    # Maintenant, trouver les détails des films correspondants
+    favorite_movies = list(items_collection.find({"item_id": {"$in": favorite_item_ids}}))
+    return jsonify(favorite_movies)
+
+
 #Route d’inscription user
 @app.route('/register', methods=['POST'])
 def register():
@@ -62,20 +77,16 @@ def register():
     email = data["email"]
     password = data["password"]
     name = data["name"]
-
     # Vérifier si l'email existe déjà
     if users_collection.find_one({"email": email}):
         return jsonify({"message": "Email déjà utilisé"}), 400
-
     # Hasher le mot de passe
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
     user = {
         "name": name,
         "email": email,
         "password": hashed_pw
     }
-
     result = users_collection.insert_one(user)
     return jsonify({"message": "Utilisateur inscrit", "id": str(result.inserted_id)}), 201
 
@@ -85,11 +96,9 @@ def login():
     data = request.get_json()
     email = data["email"]
     password = data["password"]
-
     user = users_collection.find_one({"email": email})
     if not user:
         return jsonify({"message": "Utilisateur non trouvé"}), 404
-
     if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
         # Création du token JWT
         payload = {
@@ -97,7 +106,6 @@ def login():
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # expiration dans 2h
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-
         return jsonify({
             "message": "Connexion réussie",
             "token": token,
@@ -108,67 +116,50 @@ def login():
         return jsonify({"message": "Mot de passe incorrect"}), 401
 
 
-
-
-@app.route("/recommend/<user_id>", methods=["GET"])
-def recommend(user_id):
-    # 1. Récupérer toutes les notes de l'utilisateur
-    user_ratings = list(ratings_collection.find({"user_id": user_id}))
-
-    if not user_ratings:
-        return jsonify({"message": "Aucune note trouvée pour cet utilisateur", "recommendations": []})
-
-    # 2. Trouver les genres des films bien notés (rating >= 4.0)
-    liked_item_ids = [r["item_id"] for r in user_ratings if r["rating"] >= 4.0]
-    liked_items = list(items_collection.find({"_id": {"$in": [ObjectId(i) for i in liked_item_ids]}}))
-    liked_genres = list({item["genre"] for item in liked_items})
-
-    # 3. Recommander d'autres films du même genre (non encore notés)
-    already_rated = set(r["item_id"] for r in user_ratings)
-    recommendations = list(
-        items_collection.find({
-            "genre": {"$in": liked_genres},
-            "_id": {"$nin": [ObjectId(i) for i in already_rated]}
-        }).limit(5)
-    )
-
-    # 4. Retourner les titres recommandés
-    result = [{"title": film["title"], "genre": film["genre"]} for film in recommendations]
-    return jsonify({"recommendations": result})
+# Route pour récupérer toutes les notes d'un utilisateur
+@app.route("/user/<user_id>/ratings", methods=["GET"])
+def get_user_ratings(user_id):
+    ratings = list(ratings_collection.find({"user_id": user_id}))
+    for rating in ratings:
+        rating["_id"] = str(rating["_id"])  # Convertir ObjectId pour qu'il soit JSON serializable
+    return jsonify(ratings)
 
 
  # afficher les films de TMDB
 @app.route("/api/movies")
 def movies():
     return jsonify(get_movies())
-
-API_KEY = "4ac2226b6ffa53add88f544c5b6e9873"
+API_KEY = os.getenv("API_KEY")
 TMDB_MOVIES_URL = f"https://api.themoviedb.org/3/movie/popular?api_key={API_KEY}&language=fr-FR&page=1"
 TMDB_GENRE_URL = f"https://api.themoviedb.org/3/genre/movie/list?api_key={API_KEY}&language=fr-FR"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
-
 def get_genre_mapping():
     response = requests.get(TMDB_GENRE_URL)
     genres = response.json().get("genres", [])
     return {genre["id"]: genre["name"] for genre in genres}
-
 def get_movies():
     response = requests.get(TMDB_MOVIES_URL)
     data = response.json()
     genre_map = get_genre_mapping()
-
     movies = []
     for movie in data.get("results", []):
         movie_info = {
+            "id": movie["id"],
             "title": movie["title"],
             "image_url": IMAGE_BASE_URL + movie["poster_path"] if movie["poster_path"] else "",
             "genres": [genre_map.get(gid, "Inconnu") for gid in movie["genre_ids"]],
             "overview": movie["overview"],
-            "rating": movie["vote_average"],
             "trailer_url": f"https://www.youtube.com/results?search_query={movie['title'].replace(' ', '+')}+bande+annonce"
         }
         movies.append(movie_info)
+        save_movie_if_not_exists(movie_info)
     return movies
+def save_movie_if_not_exists(movie_info):
+    # Vérifie si le film existe déjà
+    existing_movie = items_collection.find_one({"item_id": movie_info["id"]})
+    if not existing_movie:
+        # Si n'existe pas, insérer dans la base
+        items_collection.insert_one(movie_info)
 
 
 if __name__ == "__main__":
