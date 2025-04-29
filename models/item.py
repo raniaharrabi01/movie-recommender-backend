@@ -1,6 +1,5 @@
 def create_item(title, genre, overview, trailer_url, image_url):
     return {
-        "id": id,
         "title": title,
         "genre": genre,
         "overview": overview,
