@@ -34,7 +34,7 @@ def fetch_and_save_movies():
     genre_map = get_genre_mapping()
     movies = []
 
-    for page in range(1, 50):
+    for page in range(1, 51):
         url = f"https://api.themoviedb.org/3/movie/popular?api_key={API_KEY}&language=fr-FR&page={page}"
         response = requests.get(url)
         data = response.json()
