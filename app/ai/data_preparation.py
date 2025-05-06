@@ -1,21 +1,9 @@
-import pymongo
-import os
 import pandas as pd
-from dotenv import load_dotenv
 import joblib
 import re
 from sentence_transformers import SentenceTransformer
 import numpy as np
-
-# Charger les variables d'environnement
-load_dotenv()
-MONGO_URL = os.getenv("MONGO_URI")
-DB_NAME = "recommender"
-COLLECTION_NAME = "items"
-
-# Connexion MongoDB
-client = pymongo.MongoClient(MONGO_URL)
-collection = client[DB_NAME][COLLECTION_NAME]
+from database.mongo import items_collection  # Importer la collection MongoDB
 
 # Nettoyage du texte
 def clean_text(text):
@@ -25,7 +13,7 @@ def clean_text(text):
 
 # Chargement des données
 def load_data():
-    docs = list(collection.find({}))
+    docs = list(items_collection.find({}))  # Utiliser la collection importée
     print("📊 Nombre de documents récupérés depuis MongoDB :", len(docs))
     films = []
     for doc in docs:
