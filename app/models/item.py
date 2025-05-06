@@ -1,4 +1,4 @@
-def create_item(title, genre, overview, trailer_url, image_url, director, cast):
+def create_item(title, genre, overview, trailer_url, image_url, director, cast, rating):
     return {
         "title": title,
         "genre": genre,
@@ -6,5 +6,6 @@ def create_item(title, genre, overview, trailer_url, image_url, director, cast):
         "trailer_url": trailer_url,
         "image_url": image_url,
         "director" : director,
-        "cast" : cast
+        "cast" : cast,
+        "rating" : rating
     }

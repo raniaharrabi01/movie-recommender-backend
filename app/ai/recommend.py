@@ -37,7 +37,7 @@ def recommend_movies(query_id, n=5):
 # Exemple de test
 if __name__ == "__main__":
     # Test avec un ID exemple
-    results = recommend_movies(38575, n=5) 
+    results = recommend_movies(38575, n=4) 
     for movie_id in results:
         print("🎬 ID:", movie_id)
         print("-" * 40)

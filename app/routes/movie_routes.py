@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.services.tmdb_service import fetch_and_save_movies 
-from app.services.movies_service import get_movies_from_db, count_movies_in_db
+from app.services.movies_service import get_movies_from_db, count_movies_in_db, get_movie_details_from_db
 
 
 movie_bp = Blueprint("movie", __name__)
@@ -25,8 +25,11 @@ def get_movies():
     })
 
 
-@movie_bp.route("/api/movies/tmdb")
-def get_tmdb_movies():
-    movies = fetch_and_save_movies()
-    return jsonify(movies)
+@movie_bp.route("/api/movies/<int:movie_id>")
+def get_movie_by_id(movie_id):
+    # Appeler le service pour récupérer les détails du film
+    movie = get_movie_details_from_db(movie_id)
+    if not movie:
+        return jsonify({"error": f"Film avec l'ID {movie_id} non trouvé."}), 404
+    return jsonify(movie)
 
