@@ -4,6 +4,7 @@ from app.routes.movie_routes import movie_bp
 from app.routes.favorite_routes import favorites_bp  
 from app.routes.recommending_route import recommendation_bp  
 from scheduler import start_scheduler
+from flask_cors import CORS
 
 app = Flask(__name__)
 
@@ -13,9 +14,6 @@ app.register_blueprint(movie_bp, url_prefix='/movie')
 app.register_blueprint(favorites_bp, url_prefix='/favorite')
 app.register_blueprint(recommendation_bp, url_prefix='/recommending')
 
-
-# Démarrer le cron job
-start_scheduler()
 
 if __name__ == "__main__":
     app.run(debug=True)

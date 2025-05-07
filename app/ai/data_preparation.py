@@ -3,7 +3,7 @@ import joblib
 import re
 from sentence_transformers import SentenceTransformer
 import numpy as np
-from database.mongo import items_collection  # Importer la collection MongoDB
+from database.mongo import items_collection 
 
 # Nettoyage du texte
 def clean_text(text):

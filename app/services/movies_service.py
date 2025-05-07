@@ -15,15 +15,13 @@ def get_movie_details_from_db(movie_id):
     movie = items_collection.find_one({"_id": movie_id})
     if not movie:
         return None
-    # Retourner les détails du film
-    return {
-        "id": movie["_id"],
-        "title": movie.get("title", "Titre non disponible"),
-        "overview": movie.get("overview", "Résumé non disponible"),
-        "genres": movie.get("genres", "Genres non disponibles"),
-        "image_url": movie.get("image_url", ""),
-        "director": movie.get("director", "Réalisateur non disponible"),
-        "cast": movie.get("cast", []),
-        "rating": movie.get("rating", 0),
-        "trailer url" : movie.get("trailer_url", "")
-    }
+    return movie
+
+def search_movies(query: str):
+    movies = items_collection.find(
+        {"title": {"$regex": query, "$options": "i"}} # Recherche insensible à la casse
+    )
+    result = []
+    for movie in movies:
+        result.append(movie)
+    return result

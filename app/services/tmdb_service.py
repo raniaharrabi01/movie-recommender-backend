@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 import os
 from dotenv import load_dotenv
-from database.mongo import items_collection 
+from database.mongo import items_collection
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -28,7 +28,7 @@ async def get_movie_details(session, movie_id):
 
     director = next((person["name"] for person in movie_details.get("credits", {}).get("crew", []) if person["job"] == "Director"), None)
 
-    return cast, director
+    return cast, director, movie_details.get("release_date", "")
 
 async def get_movie_overview(session, movie_id):
     url_fr = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=fr-FR"
@@ -57,7 +57,7 @@ async def fetch_and_save_movies():
         return results
 
 async def fetch_movie_data(session, movie, genre_map):
-    cast, director = await get_movie_details(session, movie["id"])
+    cast, director, release_date = await get_movie_details(session, movie["id"])
     overview = await get_movie_overview(session, movie["id"])
 
     movie_info = {
@@ -69,7 +69,8 @@ async def fetch_movie_data(session, movie, genre_map):
         "trailer_url": f"https://www.youtube.com/results?search_query={movie['title'].replace(' ', '+')}+bande+annonce",
         "rating": movie.get("vote_average", 0),  # ⭐ Ajout de la note moyenne
         "cast": cast,
-        "director": director
+        "director": director,
+        "release_date": release_date  # Ajout de la date de diffusion
     }
 
     items_collection.update_one(
